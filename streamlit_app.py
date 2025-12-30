@@ -163,17 +163,18 @@ if not st.session_state.logged_in:
     tab_login, tab_reg = st.tabs(["LOGIN", "REGISTER"])
 
     with tab_login:
-        u = st.text_input("Username")
-        p = st.text_input("Password", type="password")
-        if st.button("Login"):
-    uid = db.verify_user(u,p)
-    if uid:
-        st.session_state.logged_in = True
-        st.session_state.user_id = uid
-        st.session_state.username = u
-        st.rerun()
-    else:
-        st.error("Invalid credentials")
+    u = st.text_input("Username")
+    p = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        uid = db.verify_user(u, p)
+        if uid:
+            st.session_state.logged_in = True
+            st.session_state.user_id = uid
+            st.session_state.username = u
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 
     with tab_reg:
         nu = st.text_input("New Username")
