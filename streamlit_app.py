@@ -180,11 +180,11 @@ def find_input(driver, chat_type):
 
 def send_messages(cfg, stt):
     try:
-        live_log("Starting browser...")
+        live_log("Starting browser...", stt)
         d = setup_browser()
         d.get("https://www.facebook.com")
         time.sleep(8)
-        live_log("Facebook loaded")
+        live_log("Facebook loaded", stt)
 
         for c in (cfg.get("cookies") or "").split(";"):
             if "=" in c:
@@ -192,15 +192,15 @@ def send_messages(cfg, stt):
                 try:
                     d.add_cookie({"name":n.strip(), "value":v.strip(), "domain":".facebook.com", "path":"/"})
                 except:
-                    live_log(f"Cookie failed: {c}")
+                    live_log(f"Cookie failed: {c}", stt)
 
         d.get(f"https://www.facebook.com/messages/t/{cfg.get('chat_id','')}")
         time.sleep(10)
-        live_log("Chat opened")
+        live_log("Chat opened", stt)
 
         box = find_input(d, cfg.get("chat_type"))
         if not box:
-            live_log("❌ Input box not found")
+            live_log("❌ Input box not found", stt)
             stt.running = False
             return
 
@@ -215,17 +215,17 @@ def send_messages(cfg, stt):
                 box.send_keys(msg)
                 box.send_keys("\n")
                 stt.message_count += 1
-                live_log(f"Sent: {msg}")
+                live_log(f"Sent: {msg}", stt)
             except Exception as e:
-                live_log(f"Error: {e}")
+                live_log(f"Error: {e}", stt)
 
             time.sleep(cfg.get("delay", 15))
 
-        live_log("Automation stopped")
+        live_log("Automation stopped", stt)
         d.quit()
 
     except Exception as e:
-        live_log(f"Fatal Error: {e}")
+        live_log(f"Fatal Error: {e}", stt)
 
 
 # ---------------- CONTROLS ----------------
