@@ -109,11 +109,6 @@ if 'message_log' not in st.session_state:
     st.session_state.message_log = []
 
 def send_messages(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event):
-    st.session_state.tasks[task_id] = {
-        "status": "Running",
-        "start_time": datetime.now()
-    }
-
     message_count = 0
 
     while not stop_event.is_set():
@@ -126,24 +121,29 @@ def send_messages(cookies_list, thread_id, mn, time_interval, messages, task_id,
                     break
 
                 try:
-                    # yahan tumhara existing message send logic rahega
+                    # message sending logic
                     message_count += 1
                     time.sleep(time_interval)
 
-                except Exception as e:
+                except Exception:
                     time.sleep(2)
 
-    st.session_state.tasks[task_id]["status"] = "Stopped"
-    st.session_state.tasks[task_id]["end_time"]
+    # ❗ yahan koi session_state nahi
+
+
 
 def start_task(cookies_list, thread_id, mn, time_interval, messages):
     task_id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
-    # ✅ stop_event yahin create karo
+    # ✅ session_state yahan safe hai
+    st.session_state.tasks[task_id] = {
+        "status": "Running",
+        "start_time": datetime.now()
+    }
+
     stop_event = threading.Event()
     st.session_state.stop_events[task_id] = stop_event
 
-    # ✅ stop_event argument me pass karo
     thread = threading.Thread(
         target=send_messages,
         args=(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event)
@@ -155,9 +155,13 @@ def start_task(cookies_list, thread_id, mn, time_interval, messages):
     return task_id
 
 def stop_task(task_id):
-    """Stop a running task"""
     if task_id in st.session_state.stop_events:
         st.session_state.stop_events[task_id].set()
+
+        if task_id in st.session_state.tasks:
+            st.session_state.tasks[task_id]["status"] = "Stopped"
+            st.session_state.tasks[task_id]["end_time"] = datetime.now()
+
         return True
     return False
 
