@@ -5,6 +5,13 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import database as db
 
+class AutomationState:
+    def __init__(self):
+        self.running = False
+        self.message_count = 0
+        self.message_rotation_index = 0
+        self.live_logs = []
+        
 st.set_page_config(page_title="Automation", page_icon="🔥", layout="wide")
 
 # ------------------------------------------------------------------------------------
@@ -16,12 +23,10 @@ def init_live_logs(max_lines: int = 200):
     if "live_logs_max" not in st.session_state:
         st.session_state.live_logs_max = max_lines
 
-def live_log(msg: str):
+def live_log(msg, state):
     ts = time.strftime("%H:%M:%S")
-    line = f"[{ts}] {msg}"
-
-    init_live_logs()
-    st.session_state.live_logs.append(line)
+    state.live_logs.append(f"[{ts}] {msg}")
+    state.live_logs = state.live_logs[-200:]
 
     if len(st.session_state.live_logs) > st.session_state.live_logs_max:
         st.session_state.live_logs = st.session_state.live_logs[-st.session_state.live_logs_max:]
@@ -69,14 +74,14 @@ st.markdown('<h1 style="text-align:center;">E23E FB</h1>', unsafe_allow_html=Tru
 
 
 # ---------------- SESSION ----------------
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "automation_running" not in st.session_state: st.session_state.automation_running = False
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "automation_running" not in st.session_state:
+    st.session_state.automation_running = False
+
 if "automation_state" not in st.session_state:
-    st.session_state.automation_state = type('obj',(object,),{
-        "running": False,
-        "message_count": 0,
-        "message_rotation_index": 0
-    })()
+    st.session_state.automation_state = AutomationState()
 
 init_live_logs()
 
