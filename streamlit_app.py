@@ -1,4 +1,10 @@
-import streamlit as st import threading import time from selenium import webdriver from selenium.webdriver.chrome.options import Options from selenium.webdriver.common.by import By import database as db
+import streamlit as st
+import threading
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import database as db
 
 st.set_page_config(page_title="Automation", page_icon="🔥", layout="wide")
 
