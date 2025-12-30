@@ -1,293 +1,255 @@
 import streamlit as st
-import requests
-import threading
-import time
-import random
-import string
-from datetime import datetime
+import threading, time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import database as db
 
-# Page configuration
-st.set_page_config(
-    page_title="JATIN SINGH",
-    page_icon="☠️",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Automation", page_icon="🔥", layout="wide")
 
-# Custom CSS
+# ------------------------------------------------------------------------------------
+# 🔥 NEW LIVE LOGS SYSTEM
+# ------------------------------------------------------------------------------------
+def init_live_logs(max_lines: int = 200):
+    if "live_logs" not in st.session_state:
+        st.session_state.live_logs = []
+    if "live_logs_max" not in st.session_state:
+        st.session_state.live_logs_max = max_lines
+
+def live_log(msg: str):
+    ts = time.strftime("%H:%M:%S")
+    line = f"[{ts}] {msg}"
+
+    init_live_logs()
+    st.session_state.live_logs.append(line)
+
+    if len(st.session_state.live_logs) > st.session_state.live_logs_max:
+        st.session_state.live_logs = st.session_state.live_logs[-st.session_state.live_logs_max:]
+
+def render_live_console():
+    st.markdown('<div class="logbox">', unsafe_allow_html=True)
+    for line in st.session_state.live_logs[-100:]:
+        st.markdown(line)
+    st.markdown('</div>', unsafe_allow_html=True)
+# ------------------------------------------------------------------------------------
+
+
+# ---------------- CSS ----------------
 st.markdown("""
 <style>
-    .main {
-        background-image: url('https://i.ibb.co/TBtHnkzK/62dfe1b3d1a831062d951d680bced0e6.jpg');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }
-    .stApp {
-        background: rgba(0, 0, 0, 0.8);
-    }
-    .title-text {
-        text-align: center;
-        color: white;
-        font-size: 2.5em;
-        font-weight: bold;
-        text-shadow: 2px 2px 4px #000000;
-        animation: glow 1s ease-in-out infinite alternate;
-    }
-    @keyframes glow {
-        from { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #e60073; }
-        to { text-shadow: 0 0 20px #fff, 0 0 30px #ff4da6, 0 0 40px #ff4da6; }
-    }
-    .success-box {
-        background: rgba(0, 255, 0, 0.2);
-        border: 2px solid #00ff00;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-        color: #00ff00;
-        text-align: center;
-    }
-    .error-box {
-        background: rgba(255, 0, 0, 0.2);
-        border: 2px solid #ff0000;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-        color: #ff9900;
-        text-align: center;
-    }
-    .info-box {
-        background: rgba(0, 0, 255, 0.2);
-        border: 2px solid #0000ff;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-        color: #00ffff;
-        text-align: center;
-    }
-    .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: white !important;
-        border: 2px solid white !important;
-        border-radius: 10px !important;
-    }
-    .stSelectbox div[data-baseweb="select"] {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: white !important;
-        border: 2px solid white !important;
-        border-radius: 10px !important;
-    }
-    .stFileUploader section {
-        background: rgba(255, 255, 255, 0.1) !important;
-        border: 2px dashed white !important;
-        border-radius: 10px !important;
-    }
+.stApp {
+    background: url('https://iili.io/fK3pATQ.png') no-repeat center center fixed !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important;
+}
+.stApp::before {
+    content: "";
+    position: fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.10);
+    z-index:0;
+    pointer-events:none;
+}
+.stCard {background: rgba(255,255,255,0.02) !important;}
+.logbox {
+    background: rgba(0,0,0,0.55);
+    color:#0ff;
+    padding:15px;
+    height:300px;
+    overflow:auto;
+    border-radius:20px;
+    box-shadow:0 0 20px rgba(0,255,255,0.35);
+}
 </style>
 """, unsafe_allow_html=True)
 
-# Headers for requests
-headers = {
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
-    'user-agent': 'Mozilla/5.0 (Linux; Android 11; TECNO CE7j) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.40 Mobile Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
-    'referer': 'www.google.com'
-}
-
-# Initialize session state
-if 'tasks' not in st.session_state:
-    st.session_state.tasks = {}
-if 'stop_events' not in st.session_state:
-    st.session_state.stop_events = {}
-if 'active_threads' not in st.session_state:
-    st.session_state.active_threads = {}
-if 'message_log' not in st.session_state:
-    st.session_state.message_log = []
-
-def send_messages(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event):
-    message_count = 0
-
-    while not stop_event.is_set():
-        for message1 in messages:
-            if stop_event.is_set():
-                break
-
-            for cookie in cookies_list:
-                if stop_event.is_set():
-                    break
-
-                try:
-                    # message sending logic
-                    message_count += 1
-                    time.sleep(time_interval)
-
-                except Exception:
-                    time.sleep(2)
-
-    # ❗ yahan koi session_state nahi
+st.markdown('<h1 style="text-align:center;">E23E FB</h1>', unsafe_allow_html=True)
 
 
+# ---------------- SESSION ----------------
+if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if "automation_running" not in st.session_state: st.session_state.automation_running = False
+if "automation_state" not in st.session_state:
+    st.session_state.automation_state = type('obj',(object,),{
+        "running": False,
+        "message_count": 0,
+        "message_rotation_index": 0
+    })()
 
-def start_task(cookies_list, thread_id, mn, time_interval, messages):
-    task_id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+init_live_logs()
 
-    # ✅ session_state yahan safe hai
-    st.session_state.tasks[task_id] = {
-        "status": "Running",
-        "start_time": datetime.now()
-    }
 
-    stop_event = threading.Event()
-    st.session_state.stop_events[task_id] = stop_event
+# ---------------- LOGIN ----------------
+if not st.session_state.logged_in:
+    tab1, tab2 = st.tabs(["Login", "Create Account"])
+    with tab1:
+        u = st.text_input("Username")
+        p = st.text_input("Password", type="password")
+        if st.button("Login"):
+            uid = db.verify_user(u, p)
+            if uid:
+                st.session_state.logged_in = True
+                st.session_state.user_id = uid
+                cfg = db.get_user_config(uid)
 
-    thread = threading.Thread(
-        target=send_messages,
-        args=(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event)
-    )
-    thread.daemon = True
-    thread.start()
+                st.session_state.chat_id = cfg.get("chat_id", "")
+                st.session_state.chat_type = cfg.get("chat_type", "E2EE")
+                st.session_state.delay = cfg.get("delay", 15)
+                st.session_state.cookies = cfg.get("cookies", "")
+                st.session_state.messages = cfg.get("messages", "").split("\n") if cfg.get("messages") else []
 
-    st.session_state.active_threads[task_id] = thread
-    return task_id
+                if cfg.get("running", False):
+                    st.session_state.automation_running = True
+                    st.session_state.automation_state.running = True
 
-def stop_task(task_id):
-    if task_id in st.session_state.stop_events:
-        st.session_state.stop_events[task_id].set()
-
-        if task_id in st.session_state.tasks:
-            st.session_state.tasks[task_id]["status"] = "Stopped"
-            st.session_state.tasks[task_id]["end_time"] = datetime.now()
-
-        return True
-    return False
-
-# Main App
-def main():
-    # Header
-    st.markdown('<div class="title-text">☠️❤️ 👇JATIN SINGH 👇❤️☠️</div>', unsafe_allow_html=True)
-    
-    # Main container
-    with st.container():
-        col1, col2, col3 = st.columns([1, 2, 1])
-        
-        with col2:
-            # Task creation form
-            with st.form("message_form"):
-                st.markdown("### 🚀 Start New Task")
-                
-                # Cookie option
-                cookie_option = st.selectbox(
-                    "Select Cookie Option",
-                    ["Single Cookie", "Multiple Cookies"],
-                    help="Choose between single cookie or file with multiple cookies"
-                )
-                
-                if cookie_option == "Single Cookie":
-                    cookie_input = st.text_area(
-                        "𝙀𝙉𝙏𝙀𝙍 𝙁𝘼𝘾𝙀𝘽𝙊𝙊𝙆 𝘾𝙊𝙊𝙆𝙄𝙀..⤵️",
-                        placeholder="Paste your Facebook cookie here...",
-                        height=100
-                    )
-                    cookies_list = [cookie_input] if cookie_input else []
-                else:
-                    cookie_file = st.file_uploader(
-                        "Upload Cookie File",
-                        type=['txt'],
-                        help="Upload a text file with multiple cookies (one per line)"
-                    )
-                    if cookie_file:
-                        cookies_list = cookie_file.read().decode().strip().splitlines()
-                    else:
-                        cookies_list = []
-                
-                # Other inputs
-                thread_id = st.text_input("𝙀𝙉𝙏𝙀𝙍 𝘾𝙊𝙉𝙑𝙊 𝙐𝙄𝘿...⤵️", placeholder="Enter conversation UID")
-                kidx = st.text_input("𝙀𝙉𝙏𝙀𝙍 𝙃𝘼𝙏𝙀𝙍 𝙉𝘼𝙈𝙀...⤵️", placeholder="Enter sender name")
-                time_interval = st.number_input("𝙀𝙉𝙏𝙀𝙍 𝙎𝙋𝙀𝙀𝘿...⤵️ (seconds)", min_value=1, value=5)
-                
-                message_file = st.file_uploader(
-                    "𝙀𝙉𝙏𝙀𝙍 𝙂𝘼𝙇𝙄 𝙁𝙄𝙇𝙀..⤵️",
-                    type=['txt'],
-                    help="Upload a text file with messages (one per line)"
-                )
-                
-                # Start button
-                start_button = st.form_submit_button("☠️ 𝙍𝙐𝙉𝙄𝙉𝙂 𝙎𝙀𝙍𝙑𝙀𝙍 ☠️")
-                
-                if start_button:
-                    if not cookies_list:
-                        st.error("❌ Please provide cookies!")
-                    elif not thread_id:
-                        st.error("❌ Please enter conversation UID!")
-                    elif not kidx:
-                        st.error("❌ Please enter sender name!")
-                    elif not message_file:
-                        st.error("❌ Please upload message file!")
-                    else:
-                        messages = message_file.read().decode().splitlines()
-                        task_id = start_task(cookies_list, thread_id, kidx, time_interval, messages)
-                        st.success(f"✅ Task started with ID: **{task_id}**")
-            
-            # Stop task section
-            st.markdown("---")
-            st.markdown("### 🛑 Stop Task")
-            stop_col1, stop_col2 = st.columns([3, 1])
-            
-            with stop_col1:
-                stop_task_id = st.text_input("𝙀𝙉𝙏𝙀𝙍 𝙎𝙏𝙊𝙋 𝙆𝙀𝙔..⤵️", placeholder="Enter task ID to stop")
-            
-            with stop_col2:
-                stop_button = st.button("❤️ 𝙎𝙏𝙊𝙋 𝙎𝙀𝙍𝙑𝙀𝙍 ❤️", type="secondary")
-                
-                if stop_button and stop_task_id:
-                    if stop_task(stop_task_id):
-                        st.success(f"✅ Task {stop_task_id} stopped successfully!")
-                    else:
-                        st.error(f"❌ Task {stop_task_id} not found!")
-            
-            # Active tasks display
-            st.markdown("---")
-            st.markdown("### 📊 Active Tasks")
-            
-            if st.session_state.tasks:
-                for task_id, task_info in st.session_state.tasks.items():
-                    status_color = "🟢" if task_info["status"] == "Running" else "🔴"
-                    st.write(f"{status_color} **Task ID:** {task_id}")
-                    st.write(f"   **Status:** {task_info['status']}")
-                    st.write(f"   **Started:** {task_info['start_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    
-                    if "total_messages" in task_info:
-                        st.write(f"   **Messages Sent:** {task_info['total_messages']}")
-                    if "end_time" in task_info:
-                        st.write(f"   **Ended:** {task_info['end_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    
-                    st.write("---")
+                st.rerun()
             else:
-                st.info("📝 No active tasks")
-            
-            # Message log
-            st.markdown("### 📝 Message Log")
-            log_container = st.container()
-            with log_container:
-                for log in reversed(st.session_state.message_log[-10:]):  # Show last 10 messages
-                    st.write(log)
-    
-    # Footer
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("**☠️❣️👇JATIN SINGH 👇❣️☠️**")
-    
-    with col2:
-        st.markdown("[ᴄʟɪᴄᴋ ʜᴇʀᴇ ғᴏʀ ғᴀᴄᴇʙᴏᴏᴋ](https://www.facebook.com/officelwaleed)")
-    
-    with col3:
-        st.markdown("[💫 𝘾𝙃𝘼𝙏 𝙊𝙉 𝙒𝙃𝘼𝙏𝙎𝘼𝙋𝙋 💫](https://wa.me/+923150596250)")
+                st.error("Invalid login")
 
-if __name__ == "__main__":
-    main()
+    with tab2:
+        nu = st.text_input("New Username")
+        np = st.text_input("New Password", type="password")
+        npc = st.text_input("Confirm Password", type="password")
+        if st.button("Create User"):
+            if np != npc:
+                st.error("Passwords do not match")
+            else:
+                ok, msg = db.create_user(nu, np)
+                if ok: st.success("User created!")
+                else: st.error(msg)
+
+    st.stop()
+
+
+# ---------------- DASHBOARD ----------------
+st.subheader(f"Dashboard — User {st.session_state.user_id}")
+
+if st.button("Logout"):
+    st.session_state.logged_in = False
+    st.session_state.automation_running = False
+    st.session_state.automation_state.running = False
+    st.rerun()
+
+
+# ---------------- MESSAGE FILE ----------------
+msg_file = st.file_uploader("Upload .txt messages", type=["txt"])
+if msg_file:
+    st.session_state.messages = msg_file.read().decode().split("\n")
+    st.success("Messages Loaded")
+
+
+# ---------------- CONFIG ----------------
+chat_id = st.text_input("Chat ID", value=st.session_state.chat_id)
+chat_type = st.selectbox("Chat Type", ["E2EE", "Non-E2EE"], index=0 if st.session_state.chat_type == "E2EE" else 1)
+delay = st.number_input("Delay", 1, 300, value=st.session_state.delay)
+cookies = st.text_area("Cookies", value=st.session_state.cookies)
+
+if st.button("Save Config"):
+    db.update_user_config(
+        st.session_state.user_id,
+        chat_id, chat_type, delay,
+        cookies, "\n".join(st.session_state.messages),
+        running=st.session_state.automation_running
+    )
+    st.success("Saved!")
+
+
+# ---------------- AUTOMATION ENGINE ----------------
+def setup_browser():
+    opt = Options()
+    opt.add_argument("--headless=new")
+    opt.add_argument("--no-sandbox")
+    opt.add_argument("--disable-dev-shm-usage")
+    return webdriver.Chrome(options=opt)
+
+def find_input(driver, chat_type):
+    sel = ["div[contenteditable='true']"] if chat_type == "E2EE" else ["div[contenteditable='true']", "textarea", "[role='textbox']"]
+    for s in sel:
+        try:
+            return driver.find_element(By.CSS_SELECTOR, s)
+        except: pass
+    return None
+
+
+def send_messages(cfg, stt):
+    try:
+        live_log("Starting browser...")
+        d = setup_browser()
+        d.get("https://www.facebook.com")
+        time.sleep(8)
+        live_log("Facebook loaded")
+
+        for c in (cfg.get("cookies") or "").split(";"):
+            if "=" in c:
+                n, v = c.split("=", 1)
+                try:
+                    d.add_cookie({"name":n.strip(), "value":v.strip(), "domain":".facebook.com", "path":"/"})
+                except:
+                    live_log(f"Cookie failed: {c}")
+
+        d.get(f"https://www.facebook.com/messages/t/{cfg.get('chat_id','')}")
+        time.sleep(10)
+        live_log("Chat opened")
+
+        box = find_input(d, cfg.get("chat_type"))
+        if not box:
+            live_log("❌ Input box not found")
+            stt.running = False
+            return
+
+        msgs = [m.strip() for m in (cfg.get("messages") or "").split("\n") if m.strip()]
+        if not msgs: msgs = ["Hello!"]
+
+        while stt.running:
+            msg = msgs[stt.message_rotation_index % len(msgs)]
+            stt.message_rotation_index += 1
+
+            try:
+                box.send_keys(msg)
+                box.send_keys("\n")
+                stt.message_count += 1
+                live_log(f"Sent: {msg}")
+            except Exception as e:
+                live_log(f"Error: {e}")
+
+            time.sleep(cfg.get("delay", 15))
+
+        live_log("Automation stopped")
+        d.quit()
+
+    except Exception as e:
+        live_log(f"Fatal Error: {e}")
+
+
+# ---------------- CONTROLS ----------------
+st.subheader("Automation Control")
+
+col1, col2 = st.columns(2)
+
+if col1.button("START", disabled=st.session_state.automation_running):
+    cfg = db.get_user_config(st.session_state.user_id)
+    cfg["running"] = True
+    st.session_state.automation_running = True
+    st.session_state.automation_state.running = True
+
+    t = threading.Thread(target=send_messages, args=(cfg, st.session_state.automation_state))
+    t.daemon = True
+    t.start()
+
+if col2.button("STOP", disabled=not st.session_state.automation_running):
+    st.session_state.automation_state.running = False
+    st.session_state.automation_running = False
+    live_log("🛑 Stop pressed. Automation halting...")
+
+
+# ---------------- LIVE LOGS DISPLAY ----------------
+st.subheader("📡 Live Logs")
+st.write(f"Messages Sent: {st.session_state.automation_state.message_count}")
+
+render_live_console()
+
+if st.session_state.automation_running:
+    time.sleep(1)
+    st.rerun()
