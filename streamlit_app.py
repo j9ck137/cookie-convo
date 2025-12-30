@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Page configuration
 st.set_page_config(
-    page_title="MR WALEED OFFLINE",
+    page_title="JATIN SINGH",
     page_icon="☠️",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -108,77 +108,49 @@ if 'active_threads' not in st.session_state:
 if 'message_log' not in st.session_state:
     st.session_state.message_log = []
 
-def send_messages(cookies_list, thread_id, mn, time_interval, messages, task_id):
-    """Function to send messages using Facebook cookies"""
-    stop_event = st.session_state.stop_events[task_id]
-    st.session_state.tasks[task_id] = {"status": "Running", "start_time": datetime.now()}
-    
+def send_messages(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event):
+    st.session_state.tasks[task_id] = {
+        "status": "Running",
+        "start_time": datetime.now()
+    }
+
     message_count = 0
+
     while not stop_event.is_set():
         for message1 in messages:
             if stop_event.is_set():
                 break
+
             for cookie in cookies_list:
                 if stop_event.is_set():
                     break
+
                 try:
-                    api_url = f'https://graph.facebook.com/v15.0/t_{thread_id}/'
-                    message = str(mn) + ' ' + message1
-                    
-                    # Create session with cookies
-                    session = requests.Session()
-                    
-                    # Parse cookie string into dictionary
-                    cookie_dict = {}
-                    for c in cookie.strip().split(';'):
-                        if '=' in c:
-                            key, value = c.strip().split('=', 1)
-                            cookie_dict[key] = value
-                    
-                    # Add cookies to session
-                    session.cookies.update(cookie_dict)
-                    session.headers.update(headers)
-                    
-                    parameters = {'message': message}
-                    response = session.post(api_url, data=parameters)
-                    
-                    if response.status_code == 200:
-                        log_message = f"✅ Message Sent: {message}"
-                        st.session_state.message_log.append(log_message)
-                        message_count += 1
-                    else:
-                        log_message = f"❌ Failed (Status {response.status_code}): {message}"
-                        st.session_state.message_log.append(log_message)
-                    
-                    # Keep only last 50 messages in log
-                    if len(st.session_state.message_log) > 50:
-                        st.session_state.message_log.pop(0)
-                        
+                    # yahan tumhara existing message send logic rahega
+                    message_count += 1
                     time.sleep(time_interval)
+
                 except Exception as e:
-                    log_message = f"⚠️ Error: {str(e)}"
-                    st.session_state.message_log.append(log_message)
                     time.sleep(2)
-    
+
     st.session_state.tasks[task_id]["status"] = "Stopped"
-    st.session_state.tasks[task_id]["end_time"] = datetime.now()
-    st.session_state.tasks[task_id]["total_messages"] = message_count
+    st.session_state.tasks[task_id]["end_time"]
 
 def start_task(cookies_list, thread_id, mn, time_interval, messages):
-    """Start a new message sending task"""
     task_id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    
-    # Create stop event for this task
-    st.session_state.stop_events[task_id] = threading.Event()
-    
-    # Start thread
+
+    # ✅ stop_event yahin create karo
+    stop_event = threading.Event()
+    st.session_state.stop_events[task_id] = stop_event
+
+    # ✅ stop_event argument me pass karo
     thread = threading.Thread(
-        target=send_messages, 
-        args=(cookies_list, thread_id, mn, time_interval, messages, task_id)
+        target=send_messages,
+        args=(cookies_list, thread_id, mn, time_interval, messages, task_id, stop_event)
     )
     thread.daemon = True
     thread.start()
-    
+
     st.session_state.active_threads[task_id] = thread
     return task_id
 
@@ -192,7 +164,7 @@ def stop_task(task_id):
 # Main App
 def main():
     # Header
-    st.markdown('<div class="title-text">☠️❤️ 👇MR WALEED OFFLINE 👇❤️☠️</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title-text">☠️❤️ 👇JATIN SINGH 👇❤️☠️</div>', unsafe_allow_html=True)
     
     # Main container
     with st.container():
@@ -305,7 +277,7 @@ def main():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("**☠️❣️👇MR WALEED OFFLINE 👇❣️☠️**")
+        st.markdown("**☠️❣️👇JATIN SINGH 👇❣️☠️**")
     
     with col2:
         st.markdown("[ᴄʟɪᴄᴋ ʜᴇʀᴇ ғᴏʀ ғᴀᴄᴇʙᴏᴏᴋ](https://www.facebook.com/officelwaleed)")
