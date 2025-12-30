@@ -89,8 +89,10 @@ def next_msg(msgs):
 # ---------- AUTOMATION THREAD ----------
 def send_messages(cfg):
     a = st.session_state.get("automation")
-if not a:
-    return
+    if not a:
+        return
+
+    driver = None
     try:
         log("Starting browser...")
         driver = setup_browser()
@@ -98,18 +100,20 @@ if not a:
         time.sleep(8)
 
         # cookies insert
-        if cfg["cookies"]:
+        if cfg.get("cookies"):
             for c in cfg["cookies"].split(";"):
                 try:
-                    n,v = c.strip().split("=",1)
+                    n, v = c.strip().split("=", 1)
                     driver.add_cookie({
-                        "name":n.strip(),"value":v.strip(),
-                        "domain":".facebook.com","path":"/"
+                        "name": n.strip(),
+                        "value": v.strip(),
+                        "domain": ".facebook.com",
+                        "path": "/"
                     })
                 except:
                     pass
 
-        if cfg["chat_id"]:
+        if cfg.get("chat_id"):
             driver.get(f"https://www.facebook.com/messages/t/{cfg['chat_id']}")
             time.sleep(8)
 
@@ -119,7 +123,9 @@ if not a:
             return
 
         msgs = [m.strip() for m in cfg["messages"].split("\n") if m.strip()]
-        if not msgs: msgs = ["Hello!"]
+        if not msgs:
+            msgs = ["Hello!"]
+
         delay = int(cfg["delay"])
 
         while a.running:
