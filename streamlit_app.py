@@ -14,16 +14,23 @@ st.set_page_config(page_title="FB Automation", page_icon="⚙️", layout="wide"
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+# ---------- SESSION STATE SAFE INIT ----------
+class AutoState:
+    def __init__(self):
+        self.running = False
+        self.logs = []
+        self.count = 0
+        self.idx = 0
+
 if "automation" not in st.session_state:
-    class AutoState:
-        def __init__(self):
-            self.running = False
-            self.logs = []
-            self.count = 0
-            self.idx = 0
     st.session_state.automation = AutoState()
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 def log(msg):
+    if "automation" not in st.session_state:
+        return
     ts = time.strftime("%H:%M:%S")
     st.session_state.automation.logs.append(f"[{ts}] {msg}")
 
@@ -81,8 +88,9 @@ def next_msg(msgs):
 
 # ---------- AUTOMATION THREAD ----------
 def send_messages(cfg):
-    a = st.session_state.automation
-    driver = None
+    a = st.session_state.get("automation")
+if not a:
+    return
     try:
         log("Starting browser...")
         driver = setup_browser()
